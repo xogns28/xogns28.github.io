@@ -1,12 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <style>
+  img.infinite_rotating_logo{
+    animation: rotate_image 10s linear infinite;
+    transform-origin: 50% 50%;
+}
+
+@keyframes rotate_image{
+	100% {
+    	transform: rotate(360deg);
+    }
+}
+ </style>
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Taehoon</title>
 </head>
 <body bgcolor="pink">
-  <img src="https://minus92.wordpress.com/wp-content/uploads/2024/04/image_editor_output_image-1921720097-17138261617496650369717543327669.jpg?w=556">
+ <div class="logo-area">
+  <img src="https://minus92.wordpress.com/wp-content/uploads/2024/04/image_editor_output_image-1921720097-17138261617496650369717543327669.jpg?w=556" class="infinite_rotating_logo">
+ </div>
 </body>
 </html>
