@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Mini Survival</title>
 <style>
-  body { margin:0; overflow:hidden; background:black; touch-action:none; }
-  canvas { display:block; }
+body{margin:0;overflow:hidden;background:black;touch-action:none;}
+canvas{display:block;}
 </style>
 </head>
 <body>
@@ -19,257 +19,44 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-/* ===== 베젤 ===== */
 const bezelTop = 80;
-const bezelBottom = 60;
+const bezelBottom = 80;
 const dangerWidth = 40;
 
-/* ===== 플레이어 ===== */
-let player = {
-  x: 120,
-  y: canvas.height / 2,
-  size: 20,
-  speed: 2.6
+let score = 0;
+let gameOver = false;
+let gameOverY = -200;
+
+const player = {
+  x: canvas.width/3,
+  y: canvas.height/2,
+  size: 30,
+  speed: 4
 };
 
-/* ===== 조이스틱 ===== */
+let pipes = [];
+let spawnTimer = 0;
+
 let joystick = {
   active:false,
   startX:0,
   startY:0,
   dx:0,
-  dy:0,
-  radius:50
+  dy:0
 };
 
-/* ===== 기둥 ===== */
-let pipes = [];
-let pipeWidth = 60;
-let pipeGap = 200;
-let pipeSpeed = 3;
-
-/* ===== 상태 ===== */
-let score = 0;
-let gameOver = false;
-let gameOverAnim = 0;
-
-/* ===== 기둥 생성 ===== */
-function spawnPipe(){
-  let gapY = Math.random() * 
-    (canvas.height - bezelTop - bezelBottom - pipeGap - 100)
-    + bezelTop + 50;
-
-  pipes.push({
-    x: canvas.width,
-    gapY: gapY,
-    scored:false
-  });
-}
-
-/* ===== 충돌 + 면 보정 ===== */
-function resolveCollision(circle, rect){
-
-  let closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
-  let closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
-
-  let dx = circle.x - closestX;
-  let dy = circle.y - closestY;
-  let distance = Math.sqrt(dx*dx + dy*dy);
-
-  if(distance < circle.r){
-
-    let overlap = circle.r - distance;
-
-    if(Math.abs(dx) > Math.abs(dy)){
-      // 좌우 면 충돌
-      if(dx > 0){
-        circle.x += overlap;
-      }else{
-        circle.x -= overlap;
-      }
-    }else{
-      // 상하 면 충돌
-      if(dy > 0){
-        circle.y += overlap;
-      }else{
-        circle.y -= overlap;
-      }
-    }
-  }
-}
-
-/* ===== 업데이트 ===== */
-function update(){
-
-  if(gameOver){
-    if(gameOverAnim < 1) gameOverAnim += 0.05;
-    return;
-  }
-
-  if(joystick.active){
-    player.x += joystick.dx * 0.02 * player.speed;
-    player.y += joystick.dy * 0.02 * player.speed;
-  }
-
-  player.y = Math.max(bezelTop + player.size,
-    Math.min(canvas.height - bezelBottom - player.size, player.y));
-
-  player.x = Math.min(canvas.width - player.size, player.x);
-
-  for(let pipe of pipes){
-
-    pipe.x -= pipeSpeed;
-
-    /* 위 기둥 */
-    resolveCollision(
-      {x:player.x, y:player.y, r:player.size},
-      {x:pipe.x, y:bezelTop,
-       w:pipeWidth, h:pipe.gapY - bezelTop}
-    );
-
-    /* 아래 기둥 */
-    resolveCollision(
-      {x:player.x, y:player.y, r:player.size},
-      {x:pipe.x,
-       y:pipe.gapY + pipeGap,
-       w:pipeWidth,
-       h:canvas.height - bezelBottom - (pipe.gapY + pipeGap)}
-    );
-
-    if(pipe.x + pipeWidth < 0 && !pipe.scored){
-      score++;
-      pipe.scored = true;
-    }
-  }
-
-  if(player.x <= dangerWidth){
-    gameOver = true;
-  }
-
-  pipes = pipes.filter(p => p.x + pipeWidth > -10);
-}
-
-/* ===== 그리기 ===== */
-function draw(){
-
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  ctx.fillStyle="#111";
-  ctx.fillRect(0,0,canvas.width,bezelTop);
-  ctx.fillRect(0,canvas.height-bezelBottom,
-    canvas.width,bezelBottom);
-
-  ctx.fillStyle="white";
-  ctx.font="28px sans-serif";
-  ctx.fillText("SCORE : " + score, 20, 50);
-
-  let grad = ctx.createLinearGradient(0,0,dangerWidth,0);
-  grad.addColorStop(0,"rgba(255,0,0,0.8)");
-  grad.addColorStop(1,"rgba(255,0,0,0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,bezelTop,dangerWidth,
-    canvas.height - bezelTop - bezelBottom);
-
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle="green";
-  for(let pipe of pipes){
-    ctx.fillRect(pipe.x, bezelTop,
-      pipeWidth, pipe.gapY - bezelTop);
-
-    ctx.fillRect(pipe.x,
-      pipe.gapY + pipeGap,
-      pipeWidth,
-      canvas.height - bezelBottom - (pipe.gapY + pipeGap));
-  }
-
-  if(joystick.active){
-    ctx.strokeStyle="white";
-    ctx.beginPath();
-    ctx.arc(joystick.startX, joystick.startY,
-      joystick.radius, 0, Math.PI*2);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(
-      joystick.startX + joystick.dx,
-      joystick.startY + joystick.dy,
-      20,0,Math.PI*2
-    );
-    ctx.fill();
-  }
-
-  if(gameOver){
-
-    let boxWidth = canvas.width * 0.8;
-    let boxHeight = 200;
-    let targetY = canvas.height/2 - boxHeight/2;
-    let startY = -boxHeight;
-    let currentY = startY + (targetY - startY) * gameOverAnim;
-
-    ctx.fillStyle="rgba(0,0,0,0.7)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    ctx.fillStyle="#222";
-    ctx.fillRect(canvas.width/2-boxWidth/2,
-      currentY, boxWidth, boxHeight);
-
-    ctx.fillStyle="white";
-    ctx.font="36px sans-serif";
-    ctx.fillText("GAME OVER",
-      canvas.width/2-110,
-      currentY+60);
-
-    ctx.font="24px sans-serif";
-    ctx.fillText("FINAL SCORE : " + score,
-      canvas.width/2-100,
-      currentY+110);
-
-    ctx.fillStyle="gray";
-    ctx.fillRect(canvas.width/2-80,
-      currentY+130,160,40);
-
-    ctx.fillStyle="white";
-    ctx.fillText("RESTART",
-      canvas.width/2-55,
-      currentY+158);
-  }
-}
-
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-setInterval(spawnPipe,1500);
-
 canvas.addEventListener("touchstart", e=>{
-  if(gameOver && gameOverAnim >= 1){
-    restartGame();
-    return;
-  }
-
-  let t = e.touches[0];
+  let t=e.touches[0];
   joystick.active=true;
   joystick.startX=t.clientX;
   joystick.startY=t.clientY;
 });
 
 canvas.addEventListener("touchmove", e=>{
+  if(!joystick.active) return;
   let t=e.touches[0];
-  let dx=t.clientX-joystick.startX;
-  let dy=t.clientY-joystick.startY;
-  let dist=Math.sqrt(dx*dx+dy*dy);
-  if(dist>joystick.radius){
-    dx=dx/dist*joystick.radius;
-    dy=dy/dist*joystick.radius;
-  }
-  joystick.dx=dx;
-  joystick.dy=dy;
+  joystick.dx=t.clientX-joystick.startX;
+  joystick.dy=t.clientY-joystick.startY;
 });
 
 canvas.addEventListener("touchend", ()=>{
@@ -278,16 +65,198 @@ canvas.addEventListener("touchend", ()=>{
   joystick.dy=0;
 });
 
-function restartGame(){
-  player.x = 120;
-  player.y = canvas.height/2;
-  pipes = [];
-  score = 0;
-  gameOver = false;
-  gameOverAnim = 0;
+function spawnPipe(){
+  let gap=160;
+  let topHeight=Math.random()*(canvas.height-bezelTop-bezelBottom-gap);
+  pipes.push({
+    x:canvas.width,
+    width:60,
+    top:topHeight+bezelTop,
+    bottom:topHeight+gap+bezelTop,
+    scored:false
+  });
+}
+
+function update(){
+  if(gameOver){
+    if(gameOverY<canvas.height/2-100) gameOverY+=10;
+    return;
+  }
+
+  // 플레이어 이동
+  if(joystick.active){
+    player.x+=joystick.dx*0.02;
+    player.y+=joystick.dy*0.02;
+  }
+
+  // 화면 제한
+  player.x=Math.max(0,Math.min(canvas.width-player.size,player.x));
+  player.y=Math.max(bezelTop,Math.min(canvas.height-bezelBottom-player.size,player.y));
+
+  // 파이프 생성
+  spawnTimer++;
+  if(spawnTimer>90){
+    spawnPipe();
+    spawnTimer=0;
+  }
+
+  for(let i=pipes.length-1;i>=0;i--){
+    let p=pipes[i];
+    p.x-=3;
+
+    // 충돌 검사 (상단)
+    resolveCollision(p.x,bezelTop,p.width,p.top-bezelTop);
+
+    // 충돌 검사 (하단)
+    resolveCollision(p.x,p.bottom,p.width,
+      canvas.height-bezelBottom-p.bottom);
+
+    // 점수
+    if(!p.scored && p.x+p.width<player.x){
+      score++;
+      p.scored=true;
+    }
+
+    if(p.x+p.width<0){
+      pipes.splice(i,1);
+    }
+  }
+
+  // 왼쪽 위험지역
+  if(player.x < dangerWidth){
+    gameOver=true;
+  }
+}
+
+function resolveCollision(rx,ry,rw,rh){
+  if(player.x < rx+rw &&
+     player.x+player.size > rx &&
+     player.y < ry+rh &&
+     player.y+player.size > ry){
+
+    // 겹친 거리 계산
+    let overlapX = (player.x + player.size/2) - (rx + rw/2);
+    let overlapY = (player.y + player.size/2) - (ry + rh/2);
+
+    let halfWidths = (player.size/2 + rw/2);
+    let halfHeights = (player.size/2 + rh/2);
+
+    let depthX = halfWidths - Math.abs(overlapX);
+    let depthY = halfHeights - Math.abs(overlapY);
+
+    if(depthX < depthY){
+      // 좌우 충돌
+      if(overlapX > 0){
+        // 오른쪽에서 충돌 → 왼쪽으로 밀기
+        player.x += depthX;
+      }else{
+        // 왼쪽에서 충돌 → 오른쪽으로 밀기
+        player.x -= depthX;
+      }
+    }else{
+      // 상하 충돌
+      if(overlapY > 0){
+        player.y += depthY;
+      }else{
+        player.y -= depthY;
+      }
+    }
+  }
+}
+
+function draw(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 상단 베젤
+  ctx.fillStyle="#111";
+  ctx.fillRect(0,0,canvas.width,bezelTop);
+
+  // 하단 베젤
+  ctx.fillRect(0,canvas.height-bezelBottom,
+    canvas.width,bezelBottom);
+
+  // 점수
+  ctx.fillStyle="white";
+  ctx.font="30px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("Score: "+score,
+    canvas.width/2,50);
+
+  // 위험 그라데이션
+  let grad=ctx.createLinearGradient(0,0,dangerWidth,0);
+  grad.addColorStop(0,"rgba(255,0,0,0.8)");
+  grad.addColorStop(1,"rgba(255,0,0,0)");
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,bezelTop,dangerWidth,
+    canvas.height-bezelTop-bezelBottom);
+
+  // 파이프
+  ctx.fillStyle="green";
+  for(let p of pipes){
+    ctx.fillRect(p.x,bezelTop,
+      p.width,p.top-bezelTop);
+    ctx.fillRect(p.x,p.bottom,
+      p.width,canvas.height-bezelBottom-p.bottom);
+  }
+
+  // 플레이어
+  ctx.fillStyle="cyan";
+  ctx.fillRect(player.x,player.y,
+    player.size,player.size);
+
+  // 게임오버 창
+  if(gameOver){
+    ctx.fillStyle="white";
+    ctx.fillRect(canvas.width/2-150,
+      gameOverY,300,200);
+
+    ctx.fillStyle="black";
+    ctx.font="28px Arial";
+    ctx.fillText("GAME OVER",
+      canvas.width/2,gameOverY+60);
+
+    ctx.fillText("Score: "+score,
+      canvas.width/2,gameOverY+110);
+
+    ctx.fillText("Tap to Restart",
+      canvas.width/2,gameOverY+160);
+  }
+
+  // 조이스틱 표시
+  if(joystick.active){
+    ctx.beginPath();
+    ctx.arc(joystick.startX,joystick.startY,40,0,Math.PI*2);
+    ctx.strokeStyle="white";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(joystick.startX+joystick.dx,
+            joystick.startY+joystick.dy,
+            20,0,Math.PI*2);
+    ctx.fillStyle="white";
+    ctx.fill();
+  }
+}
+
+canvas.addEventListener("click",()=>{
+  if(gameOver){
+    pipes=[];
+    score=0;
+    player.x=canvas.width/3;
+    player.y=canvas.height/2;
+    gameOver=false;
+    gameOverY=-200;
+  }
+});
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
 }
 
 loop();
 </script>
 </body>
-  </html>
+</html>
