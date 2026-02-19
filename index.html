@@ -30,9 +30,12 @@ let gameOverY = -220;
 const player = {
   x: canvas.width/3,
   y: canvas.height/2,
-  size: 30,
-  speed: 4
+  size: 30
 };
+
+/* ===== 트레일 ===== */
+let trail = [];
+const trailLength = 15;
 
 let pipes = [];
 let spawnTimer = 0;
@@ -63,7 +66,6 @@ canvas.addEventListener("touchmove", e=>{
 
   let dist=Math.sqrt(dx*dx+dy*dy);
 
-  // 작은 원이 큰 원 밖 못 나가게 제한
   if(dist>joystick.radius){
     dx = dx/dist*joystick.radius;
     dy = dy/dist*joystick.radius;
@@ -100,18 +102,26 @@ function update(){
   }
 
   if(joystick.active){
+    // ★ 니가 말한 속도 0.08 적용
     player.x+=joystick.dx*0.08;
     player.y+=joystick.dy*0.08;
   }
 
-  // 화면 제한 (오른쪽/위/아래)
+  // 화면 제한
   player.x=Math.min(canvas.width-player.size,player.x);
   player.y=Math.max(bezelTop,
            Math.min(canvas.height-bezelBottom-player.size,player.y));
 
-  // ⭐ 왼쪽 화면 끝 닿으면 게임오버
+  // 왼쪽 끝 닿으면 게임오버
   if(player.x <= 0){
     gameOver=true;
+  }
+
+  // ★ 트레일 저장
+  trail.push({ x: player.x, y: player.y });
+
+  if(trail.length > trailLength){
+    trail.shift();
   }
 
   spawnTimer++;
@@ -206,12 +216,20 @@ function draw(){
       p.width,canvas.height-bezelBottom-p.bottom);
   }
 
-  // ⭐ 플레이어 흰색
+  // ===== 트레일 그리기 =====
+  for(let i=0;i<trail.length;i++){
+    let t=trail[i];
+    let alpha=i/trail.length;
+    ctx.fillStyle="rgba(255,255,255,"+(alpha*0.4)+")";
+    ctx.fillRect(t.x,t.y,player.size,player.size);
+  }
+
+  // 플레이어
   ctx.fillStyle="white";
   ctx.fillRect(player.x,player.y,
     player.size,player.size);
 
-  // 게임오버 박스 (어두운색)
+  // 게임오버 박스
   if(gameOver){
     ctx.fillStyle="rgba(0,0,0,0.7)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -254,6 +272,7 @@ canvas.addEventListener("click",()=>{
   if(gameOver){
     pipes=[];
     score=0;
+    trail=[];
     player.x=canvas.width/3;
     player.y=canvas.height/2;
     gameOver=false;
