@@ -35,7 +35,7 @@ const player = {
 
 /* ===== 트레일 ===== */
 let trail = [];
-const trailLength = 15;
+const trailLength = 20;
 
 let pipes = [];
 let spawnTimer = 0;
@@ -102,24 +102,20 @@ function update(){
   }
 
   if(joystick.active){
-    // ★ 니가 말한 속도 0.08 적용
     player.x+=joystick.dx*0.08;
     player.y+=joystick.dy*0.08;
   }
 
-  // 화면 제한
   player.x=Math.min(canvas.width-player.size,player.x);
   player.y=Math.max(bezelTop,
            Math.min(canvas.height-bezelBottom-player.size,player.y));
 
-  // 왼쪽 끝 닿으면 게임오버
   if(player.x <= 0){
     gameOver=true;
   }
 
-  // ★ 트레일 저장
+  // ===== 트레일 저장 =====
   trail.push({ x: player.x, y: player.y });
-
   if(trail.length > trailLength){
     trail.shift();
   }
@@ -186,20 +182,17 @@ function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 베젤
   ctx.fillStyle="#111";
   ctx.fillRect(0,0,canvas.width,bezelTop);
   ctx.fillRect(0,canvas.height-bezelBottom,
     canvas.width,bezelBottom);
 
-  // 점수
   ctx.fillStyle="white";
   ctx.font="30px Arial";
   ctx.textAlign="center";
   ctx.fillText("Score: "+score,
     canvas.width/2,50);
 
-  // 왼쪽 그라데이션
   let grad=ctx.createLinearGradient(0,0,dangerWidth,0);
   grad.addColorStop(0,"rgba(255,0,0,0.8)");
   grad.addColorStop(1,"rgba(255,0,0,0)");
@@ -207,7 +200,6 @@ function draw(){
   ctx.fillRect(0,bezelTop,dangerWidth,
     canvas.height-bezelTop-bezelBottom);
 
-  // 파이프
   ctx.fillStyle="green";
   for(let p of pipes){
     ctx.fillRect(p.x,bezelTop,
@@ -216,20 +208,28 @@ function draw(){
       p.width,canvas.height-bezelBottom-p.bottom);
   }
 
-  // ===== 트레일 그리기 =====
+  /* ===== 트레일 (크기=투명도 연동) ===== */
   for(let i=0;i<trail.length;i++){
     let t=trail[i];
-    let alpha=i/trail.length;
-    ctx.fillStyle="rgba(255,255,255,"+(alpha*0.4)+")";
-    ctx.fillRect(t.x,t.y,player.size,player.size);
+
+    let ratio = i / trail.length;  // 0 → 1
+    let alpha = ratio;             // 투명도
+    let size = player.size * ratio; // 크기 동일 비율
+
+    ctx.fillStyle="rgba(255,255,255,"+alpha+")";
+
+    ctx.fillRect(
+      t.x + (player.size - size)/2,
+      t.y + (player.size - size)/2,
+      size,
+      size
+    );
   }
 
-  // 플레이어
   ctx.fillStyle="white";
   ctx.fillRect(player.x,player.y,
     player.size,player.size);
 
-  // 게임오버 박스
   if(gameOver){
     ctx.fillStyle="rgba(0,0,0,0.7)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -250,7 +250,6 @@ function draw(){
       canvas.width/2,gameOverY+170);
   }
 
-  // 조이스틱
   if(joystick.active){
     ctx.beginPath();
     ctx.arc(joystick.startX,joystick.startY,
