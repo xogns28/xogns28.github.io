@@ -19,12 +19,10 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let player = {
-  x: 100,
-  y: canvas.height / 2,
-  size: 20,
-  speed: 2   // 🔥 속도 낮춤
-};
+let player, pipes, score, gameOver;
+let pipeWidth = 60;
+let pipeGap = 180;
+let pipeSpeed = 3;
 
 let joystick = {
   active:false,
@@ -35,6 +33,200 @@ let joystick = {
   radius:50
 };
 
+function resetGame(){
+  player = {
+    x: 100,
+    y: canvas.height / 2,
+    size: 20,
+    speed: 2
+  };
+  pipes = [];
+  score = 0;
+  gameOver = false;
+}
+
+resetGame();
+
+function spawnPipe(){
+  let gapY = Math.random() * (canvas.height - pipeGap - 100) + 50;
+  pipes.push({ x: canvas.width, gapY: gapY, counted:false });
+}
+
+function circleRectCollision(cx, cy, radius, rx, ry, rw, rh){
+  let testX = cx;
+  let testY = cy;
+
+  if (cx < rx) testX = rx;
+  else if (cx > rx + rw) testX = rx + rw;
+
+  if (cy < ry) testY = ry;
+  else if (cy > ry + rh) testY = ry + rh;
+
+  let distX = cx - testX;
+  let distY = cy - testY;
+  return Math.sqrt(distX*distX + distY*distY) <= radius;
+}
+
+function update(){
+  if(gameOver) return;
+
+  if(joystick.active){
+    player.x += joystick.dx * 0.02 * player.speed;
+    player.y += joystick.dy * 0.02 * player.speed;
+  }
+
+  player.y = Math.max(player.size, Math.min(canvas.height-player.size, player.y));
+
+  for(let pipe of pipes){
+    pipe.x -= pipeSpeed;
+
+    // 점수 카운트 (완전히 지나갔을 때)
+    if(!pipe.counted && pipe.x + pipeWidth < 0){
+      score++;
+      pipe.counted = true;
+    }
+
+    if(circleRectCollision(player.x, player.y, player.size,
+      pipe.x, 0, pipeWidth, pipe.gapY)){
+        player.x -= 8;
+    }
+
+    if(circleRectCollision(player.x, player.y, player.size,
+      pipe.x, pipe.gapY+pipeGap, pipeWidth,
+      canvas.height-(pipe.gapY+pipeGap))){
+        player.x -= 8;
+    }
+  }
+
+  if(player.x <= 20){
+    gameOver = true;
+  }
+
+  pipes = pipes.filter(p => p.x + pipeWidth > -50);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 가시
+  ctx.fillStyle="red";
+  ctx.fillRect(0,0,20,canvas.height);
+
+  // 플레이어
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
+  ctx.fill();
+
+  // 기둥
+  ctx.fillStyle="green";
+  for(let pipe of pipes){
+    ctx.fillRect(pipe.x,0,pipeWidth,pipe.gapY);
+    ctx.fillRect(pipe.x,pipe.gapY+pipeGap,
+      pipeWidth,canvas.height-(pipe.gapY+pipeGap));
+  }
+
+  // 점수 표시
+  ctx.fillStyle="white";
+  ctx.font="30px sans-serif";
+  ctx.fillText("Score: " + score, 20, 40);
+
+  // 조이스틱
+  if(joystick.active){
+    ctx.strokeStyle="white";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(joystick.startX, joystick.startY, joystick.radius, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(
+      joystick.startX + joystick.dx,
+      joystick.startY + joystick.dy,
+      20,
+      0,
+      Math.PI*2
+    );
+    ctx.fill();
+  }
+
+  // 게임오버 화면
+  if(gameOver){
+    ctx.fillStyle="rgba(0,0,0,0.7)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle="white";
+    ctx.font="40px sans-serif";
+    ctx.fillText("GAME OVER",canvas.width/2-140,canvas.height/2-40);
+
+    ctx.font="30px sans-serif";
+    ctx.fillText("Final Score: " + score,
+      canvas.width/2-120,canvas.height/2+10);
+
+    // 버튼
+    ctx.fillStyle="white";
+    ctx.fillRect(canvas.width/2-100,canvas.height/2+50,200,50);
+
+    ctx.fillStyle="black";
+    ctx.font="25px sans-serif";
+    ctx.fillText("RESTART",
+      canvas.width/2-55,canvas.height/2+85);
+  }
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+setInterval(spawnPipe, 1500);
+
+// 터치
+canvas.addEventListener("touchstart", e=>{
+  if(gameOver){
+    let x = e.touches[0].clientX;
+    let y = e.touches[0].clientY;
+
+    if(x > canvas.width/2-100 &&
+       x < canvas.width/2+100 &&
+       y > canvas.height/2+50 &&
+       y < canvas.height/2+100){
+         resetGame();
+    }
+    return;
+  }
+
+  let t = e.touches[0];
+  joystick.active=true;
+  joystick.startX=t.clientX;
+  joystick.startY=t.clientY;
+});
+
+canvas.addEventListener("touchmove", e=>{
+  if(!joystick.active) return;
+  let t=e.touches[0];
+  let dx=t.clientX-joystick.startX;
+  let dy=t.clientY-joystick.startY;
+  let dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist>joystick.radius){
+    dx=dx/dist*joystick.radius;
+    dy=dy/dist*joystick.radius;
+  }
+  joystick.dx=dx;
+  joystick.dy=dy;
+});
+
+canvas.addEventListener("touchend", ()=>{
+  joystick.active=false;
+  joystick.dx=0;
+  joystick.dy=0;
+});
+
+loop();
+</script>
+</body>
+</html>
 let pipes = [];
 let pipeWidth = 60;
 let pipeGap = 180;
