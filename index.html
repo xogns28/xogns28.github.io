@@ -1,26 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
- <style>
-  img.infinite_rotating_logo{
-    animation: rotate_image 5s linear infinite;
-    transform-origin: 50% 50%;
+<meta charset="UTF-8">
+<title>Mini Game</title>
+<style>
+  body { margin: 0; overflow: hidden; }
+  canvas { background: black; display: block; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  size: 20
+};
+
+function drawPlayer() {
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+  ctx.fill();
 }
 
-@keyframes rotate_image{
-	100% {
-    	transform: rotate(360deg);
-    }
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawPlayer();
+  requestAnimationFrame(gameLoop);
 }
- </style>
-	<meta charset="UTF-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Mungchi</title>
-</head>
-<body bgcolor="pink">
- <div class="logo-area">
-  <img src="https://minus92.wordpress.com/wp-content/uploads/2024/04/image_editor_output_image-1921720097-17138261617496650369717543327669.jpg?w=356" class="infinite_rotating_logo">
- </div>
+
+canvas.addEventListener("touchmove", function(e) {
+  let touch = e.touches[0];
+  player.x = touch.clientX;
+  player.y = touch.clientY;
+});
+
+gameLoop();
+</script>
+
 </body>
 </html>
