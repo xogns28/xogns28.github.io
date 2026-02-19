@@ -22,8 +22,6 @@ canvas.height = window.innerHeight;
 /* ===== 베젤 ===== */
 const bezelTop = 80;
 const bezelBottom = 60;
-
-/* ===== 위험 구역 폭 ===== */
 const dangerWidth = 40;
 
 /* ===== 플레이어 ===== */
@@ -68,17 +66,41 @@ function spawnPipe(){
   });
 }
 
-/* ===== 충돌 체크 ===== */
-function circleRectCollision(cx, cy, radius, rx, ry, rw, rh){
-  let testX = Math.max(rx, Math.min(cx, rx + rw));
-  let testY = Math.max(ry, Math.min(cy, ry + rh));
-  let distX = cx - testX;
-  let distY = cy - testY;
-  return Math.sqrt(distX*distX + distY*distY) <= radius;
+/* ===== 충돌 + 면 보정 ===== */
+function resolveCollision(circle, rect){
+
+  let closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
+  let closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
+
+  let dx = circle.x - closestX;
+  let dy = circle.y - closestY;
+  let distance = Math.sqrt(dx*dx + dy*dy);
+
+  if(distance < circle.r){
+
+    let overlap = circle.r - distance;
+
+    if(Math.abs(dx) > Math.abs(dy)){
+      // 좌우 면 충돌
+      if(dx > 0){
+        circle.x += overlap;
+      }else{
+        circle.x -= overlap;
+      }
+    }else{
+      // 상하 면 충돌
+      if(dy > 0){
+        circle.y += overlap;
+      }else{
+        circle.y -= overlap;
+      }
+    }
+  }
 }
 
 /* ===== 업데이트 ===== */
 function update(){
+
   if(gameOver){
     if(gameOverAnim < 1) gameOverAnim += 0.05;
     return;
@@ -89,32 +111,30 @@ function update(){
     player.y += joystick.dy * 0.02 * player.speed;
   }
 
-  /* 상하 제한 */
   player.y = Math.max(bezelTop + player.size,
     Math.min(canvas.height - bezelBottom - player.size, player.y));
 
-  /* 오른쪽 제한 */
   player.x = Math.min(canvas.width - player.size, player.x);
 
   for(let pipe of pipes){
+
     pipe.x -= pipeSpeed;
 
-    let hitTop = circleRectCollision(
-      player.x, player.y, player.size,
-      pipe.x, bezelTop, pipeWidth, pipe.gapY - bezelTop
+    /* 위 기둥 */
+    resolveCollision(
+      {x:player.x, y:player.y, r:player.size},
+      {x:pipe.x, y:bezelTop,
+       w:pipeWidth, h:pipe.gapY - bezelTop}
     );
 
-    let hitBottom = circleRectCollision(
-      player.x, player.y, player.size,
-      pipe.x, pipe.gapY + pipeGap, pipeWidth,
-      canvas.height - bezelBottom - (pipe.gapY + pipeGap)
+    /* 아래 기둥 */
+    resolveCollision(
+      {x:player.x, y:player.y, r:player.size},
+      {x:pipe.x,
+       y:pipe.gapY + pipeGap,
+       w:pipeWidth,
+       h:canvas.height - bezelBottom - (pipe.gapY + pipeGap)}
     );
-
-    if(hitTop || hitBottom){
-
-      /* 🔥 위치 강제 보정 (절대 통과 못함) */
-      player.x = pipe.x + pipeWidth + player.size;
-    }
 
     if(pipe.x + pipeWidth < 0 && !pipe.scored){
       score++;
@@ -131,20 +151,18 @@ function update(){
 
 /* ===== 그리기 ===== */
 function draw(){
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  /* 베젤 */
   ctx.fillStyle="#111";
   ctx.fillRect(0,0,canvas.width,bezelTop);
   ctx.fillRect(0,canvas.height-bezelBottom,
     canvas.width,bezelBottom);
 
-  /* 점수 */
   ctx.fillStyle="white";
   ctx.font="28px sans-serif";
   ctx.fillText("SCORE : " + score, 20, 50);
 
-  /* 위험 그라데이션 */
   let grad = ctx.createLinearGradient(0,0,dangerWidth,0);
   grad.addColorStop(0,"rgba(255,0,0,0.8)");
   grad.addColorStop(1,"rgba(255,0,0,0)");
@@ -152,13 +170,11 @@ function draw(){
   ctx.fillRect(0,bezelTop,dangerWidth,
     canvas.height - bezelTop - bezelBottom);
 
-  /* 플레이어 */
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(player.x,player.y,player.size,0,Math.PI*2);
   ctx.fill();
 
-  /* 기둥 */
   ctx.fillStyle="green";
   for(let pipe of pipes){
     ctx.fillRect(pipe.x, bezelTop,
@@ -170,11 +186,8 @@ function draw(){
       canvas.height - bezelBottom - (pipe.gapY + pipeGap));
   }
 
-  /* 조이스틱 */
   if(joystick.active){
     ctx.strokeStyle="white";
-    ctx.lineWidth=2;
-
     ctx.beginPath();
     ctx.arc(joystick.startX, joystick.startY,
       joystick.radius, 0, Math.PI*2);
@@ -189,8 +202,8 @@ function draw(){
     ctx.fill();
   }
 
-  /* 게임오버 박스 */
   if(gameOver){
+
     let boxWidth = canvas.width * 0.8;
     let boxHeight = 200;
     let targetY = canvas.height/2 - boxHeight/2;
@@ -226,7 +239,6 @@ function draw(){
   }
 }
 
-/* ===== 루프 ===== */
 function loop(){
   update();
   draw();
@@ -235,7 +247,6 @@ function loop(){
 
 setInterval(spawnPipe,1500);
 
-/* ===== 터치 ===== */
 canvas.addEventListener("touchstart", e=>{
   if(gameOver && gameOverAnim >= 1){
     restartGame();
@@ -267,7 +278,6 @@ canvas.addEventListener("touchend", ()=>{
   joystick.dy=0;
 });
 
-/* ===== 재시작 ===== */
 function restartGame(){
   player.x = 120;
   player.y = canvas.height/2;
@@ -280,4 +290,4 @@ function restartGame(){
 loop();
 </script>
 </body>
-</html>
+  </html>
