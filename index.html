@@ -19,25 +19,22 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// 플레이어
 let player = {
   x: 100,
   y: canvas.height / 2,
   size: 20,
-  speed: 5
+  speed: 2   // 🔥 속도 낮춤
 };
 
-// 조이스틱
 let joystick = {
   active:false,
   startX:0,
   startY:0,
   dx:0,
   dy:0,
-  radius:40
+  radius:50
 };
 
-// 기둥 배열
 let pipes = [];
 let pipeWidth = 60;
 let pipeGap = 180;
@@ -45,16 +42,11 @@ let pipeSpeed = 3;
 
 let gameOver = false;
 
-// 기둥 생성
 function spawnPipe(){
   let gapY = Math.random() * (canvas.height - pipeGap - 100) + 50;
-  pipes.push({
-    x: canvas.width,
-    gapY: gapY
-  });
+  pipes.push({ x: canvas.width, gapY: gapY });
 }
 
-// 충돌 체크
 function circleRectCollision(cx, cy, radius, rx, ry, rw, rh){
   let testX = cx;
   let testY = cy;
@@ -75,39 +67,32 @@ function circleRectCollision(cx, cy, radius, rx, ry, rw, rh){
 function update(){
   if(gameOver) return;
 
-  // 조이스틱 이동
   if(joystick.active){
-    player.x += joystick.dx * 0.05 * player.speed;
-    player.y += joystick.dy * 0.05 * player.speed;
+    player.x += joystick.dx * 0.02 * player.speed; // 🔥 이동 계수 줄임
+    player.y += joystick.dy * 0.02 * player.speed;
   }
 
-  // 화면 제한
   player.y = Math.max(player.size, Math.min(canvas.height-player.size, player.y));
 
-  // 기둥 이동
   for(let pipe of pipes){
     pipe.x -= pipeSpeed;
 
-    // 위 기둥
     if(circleRectCollision(player.x, player.y, player.size,
       pipe.x, 0, pipeWidth, pipe.gapY)){
-        player.x -= 10; // 왼쪽으로 밀림
+        player.x -= 8;
     }
 
-    // 아래 기둥
     if(circleRectCollision(player.x, player.y, player.size,
       pipe.x, pipe.gapY+pipeGap, pipeWidth,
       canvas.height-(pipe.gapY+pipeGap))){
-        player.x -= 10;
+        player.x -= 8;
     }
   }
 
-  // 왼쪽 가시 닿으면 게임오버
   if(player.x <= 20){
     gameOver = true;
   }
 
-  // 기둥 정리
   pipes = pipes.filter(p => p.x + pipeWidth > 0);
 }
 
@@ -132,6 +117,28 @@ function draw(){
       pipeWidth,canvas.height-(pipe.gapY+pipeGap));
   }
 
+  // 🎮 조이스틱 그리기
+  if(joystick.active){
+    ctx.strokeStyle="white";
+    ctx.lineWidth=2;
+
+    // 바깥 원
+    ctx.beginPath();
+    ctx.arc(joystick.startX, joystick.startY, joystick.radius, 0, Math.PI*2);
+    ctx.stroke();
+
+    // 안쪽 원
+    ctx.beginPath();
+    ctx.arc(
+      joystick.startX + joystick.dx,
+      joystick.startY + joystick.dy,
+      20,
+      0,
+      Math.PI*2
+    );
+    ctx.fill();
+  }
+
   if(gameOver){
     ctx.fillStyle="white";
     ctx.font="40px sans-serif";
@@ -145,10 +152,8 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-// 기둥 주기적 생성
 setInterval(spawnPipe, 1500);
 
-// 터치 이벤트
 canvas.addEventListener("touchstart", e=>{
   let t = e.touches[0];
   joystick.active=true;
