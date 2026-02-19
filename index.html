@@ -23,12 +23,15 @@ canvas.height = window.innerHeight;
 const bezelTop = 80;
 const bezelBottom = 60;
 
+/* ===== 위험 구역 폭 ===== */
+const dangerWidth = 40;
+
 /* ===== 플레이어 ===== */
 let player = {
   x: 120,
   y: canvas.height / 2,
   size: 20,
-  speed: 2.6   // 🔥 살짝 증가
+  speed: 2.6
 };
 
 /* ===== 조이스틱 ===== */
@@ -65,7 +68,7 @@ function spawnPipe(){
   });
 }
 
-/* ===== 충돌 ===== */
+/* ===== 충돌 체크 ===== */
 function circleRectCollision(cx, cy, radius, rx, ry, rw, rh){
   let testX = Math.max(rx, Math.min(cx, rx + rw));
   let testY = Math.max(ry, Math.min(cy, ry + rh));
@@ -90,7 +93,7 @@ function update(){
   player.y = Math.max(bezelTop + player.size,
     Math.min(canvas.height - bezelBottom - player.size, player.y));
 
-  /* 🔥 오른쪽 화면 제한 */
+  /* 오른쪽 제한 */
   player.x = Math.min(canvas.width - player.size, player.x);
 
   for(let pipe of pipes){
@@ -108,7 +111,9 @@ function update(){
     );
 
     if(hitTop || hitBottom){
-      player.x -= pipeSpeed + 2;
+
+      /* 🔥 위치 강제 보정 (절대 통과 못함) */
+      player.x = pipe.x + pipeWidth + player.size;
     }
 
     if(pipe.x + pipeWidth < 0 && !pipe.scored){
@@ -117,7 +122,7 @@ function update(){
     }
   }
 
-  if(player.x <= 20){
+  if(player.x <= dangerWidth){
     gameOver = true;
   }
 
@@ -139,12 +144,12 @@ function draw(){
   ctx.font="28px sans-serif";
   ctx.fillText("SCORE : " + score, 20, 50);
 
-  /* 🔥 왼쪽 그라데이션 */
-  let grad = ctx.createLinearGradient(0,0,80,0);
+  /* 위험 그라데이션 */
+  let grad = ctx.createLinearGradient(0,0,dangerWidth,0);
   grad.addColorStop(0,"rgba(255,0,0,0.8)");
   grad.addColorStop(1,"rgba(255,0,0,0)");
   ctx.fillStyle = grad;
-  ctx.fillRect(0,bezelTop,80,
+  ctx.fillRect(0,bezelTop,dangerWidth,
     canvas.height - bezelTop - bezelBottom);
 
   /* 플레이어 */
@@ -184,7 +189,7 @@ function draw(){
     ctx.fill();
   }
 
-  /* ===== 게임오버 박스 애니메이션 ===== */
+  /* 게임오버 박스 */
   if(gameOver){
     let boxWidth = canvas.width * 0.8;
     let boxHeight = 200;
@@ -233,19 +238,7 @@ setInterval(spawnPipe,1500);
 /* ===== 터치 ===== */
 canvas.addEventListener("touchstart", e=>{
   if(gameOver && gameOverAnim >= 1){
-    let x = e.touches[0].clientX;
-    let y = e.touches[0].clientY;
-
-    let boxWidth = canvas.width * 0.8;
-    let boxHeight = 200;
-    let targetY = canvas.height/2 - boxHeight/2;
-
-    if(x > canvas.width/2-80 &&
-       x < canvas.width/2+80 &&
-       y > targetY+130 &&
-       y < targetY+170){
-         restartGame();
-    }
+    restartGame();
     return;
   }
 
